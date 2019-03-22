@@ -12,7 +12,7 @@ namespace MeshGrowth
     {
         List<CurveAgent> agents;
 
-        public GH_AgentCurves() : base("AgentCurves", "AgentCurves", "AgentCurves", "McMuffin", "AgentCurves")
+        public GH_AgentCurves() : base("AgentCurves", "AgentCurves", "AgentCurves", "AgentCurves", "AgentCurves")
         {
         }
 
