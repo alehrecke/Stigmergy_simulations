@@ -22,24 +22,22 @@ namespace MeshGrowth
         public double AlignMax;
 
         public List<Point3d> AllPoints;
+        public List<Vector3d> AllTangents;
         public RTree rTree;
-
         public Polyline AgentPolyline;
 
 
         public List<double> totalWeights;
         public List<Vector3d> totalWeightedDirections;
 
-
-
-        public StigmergyAgent(Point3d _startingPoint)
+        public StigmergyAgent(Point3d _startingPoint, Vector3d _randomVector)
         {
+            Point3d secondPoint = _startingPoint + _randomVector;
+
             AgentPolyline = new Polyline();
             AgentPolyline.Add(_startingPoint);
-            AgentPolyline.Add(new Point3d(_startingPoint.X, _startingPoint.Y, 20));
-
+            AgentPolyline.Add(secondPoint);
         }
-
 
         public void Update()
         {
@@ -49,13 +47,13 @@ namespace MeshGrowth
             UpdateVertices();
         }
 
-
         public void Weights()
         {
             totalWeights = new List<double>();
             totalWeightedDirections = new List<Vector3d>();
 
-            for(int i = 0; i < AgentPolyline.Count; i++) {
+            for (int i = 0; i < AgentPolyline.Count; i++)
+            {
                 totalWeights.Add(0);
                 totalWeightedDirections.Add(new Vector3d());
             }
@@ -65,13 +63,14 @@ namespace MeshGrowth
         {
             //make a random vector
 
-            for (int i = 0; i < AgentPolyline.Count; i++) {
+            for (int i = 0; i < AgentPolyline.Count; i++)
+            {
 
                 Random rand = new Random();
-                double x = rand.Next(0,100);
-                double y = rand.Next(0,100);
+                double x = rand.Next(0, 100);
+                double y = rand.Next(0, 100);
 
-                Vector3d move = new Vector3d(x,y,0);
+                Vector3d move = new Vector3d(x, y, 0);
                 move.Unitize();
 
                 totalWeightedDirections[i] += move * 1;
@@ -94,90 +93,97 @@ namespace MeshGrowth
 
         private void CollisionDetection()
         {
+            //only search from the last point
             for (int i = 0; i < AgentPolyline.Count; i++)
             {
+
                 Point3d thisPoint = AgentPolyline[i];
-                List<Point3d> neighbourPoints = new List<Point3d>();
+                List<int> neighbourIds = new List<int>();
 
-                rTree.Search(new Sphere(thisPoint, AttractionMax), (sender, args) => { neighbourPoints.Add(AllPoints[args.Id]); });
+                rTree.Search(new Sphere(thisPoint, AttractionMax), (sender, args) => { neighbourIds.Add(args.Id); });
 
-                if (neighbourPoints.Count > 0) {
+                if (neighbourIds.Count > 0 && NeighbourCount > 1)
+                {
+                    List<int> orderedIds = ClosestIds(thisPoint, neighbourIds, (int)NeighbourCount);
 
-                    Point3d first = neighbourPoints[0];
-                    Point3d second = neighbourPoints[1];
+                    if (orderedIds.Count > 1){
 
-
-                    List<Point3d> orderedPoints = ClosestPoints(thisPoint, neighbourPoints, (int)NeighbourCount);
-
-                    if (NeighbourCount > 1) {
-                        Point3d targetPoint = orderedPoints[1];
+                        Point3d targetPoint = AllPoints[orderedIds[1]];
+                        Vector3d targetTangent = AllTangents[orderedIds[1]];
                         Vector3d move = targetPoint - thisPoint;
 
-                        if (RepelMin <= move.Length && move.Length <= RepelMax) {
+                        if (RepelMin <= move.Length && move.Length <= RepelMax)
+                        {
                             move.Unitize();
                             totalWeights[i] += 1;
                             totalWeightedDirections[i] += move * -1;
                         }
 
-                        if (AttractionMin < move.Length && move.Length <= AttractionMax) {
+                        if (AttractionMin < move.Length && move.Length <= AttractionMax)
+                        {
                             move.Unitize();
                             totalWeights[i] += 1;
                             totalWeightedDirections[i] += move * 1;
                         }
 
-                        //add the align force here
-                        if (AlignMin < move.Length && move.Length <= AlignMax){
-                           
-                            move.Unitize();
+                        if (AlignMin < move.Length && move.Length <= AlignMax)
+                        {
+                            targetTangent.Unitize();
                             totalWeights[i] += 1;
-                            totalWeightedDirections[i] += move * 1;
+                            totalWeightedDirections[i] += targetTangent * 1;
                         }
-
-
                     }
 
 
 
                 }
-
-
-
-
             }
         }
 
-
-        public Point3d ClosestPoint(Point3d testPoint, List<Point3d> pointCloud)
+        private void AddVertice()
         {
-            Point3d closestPoint = new Point3d(99999,99999,99999);
+            int lastIndex = AgentPolyline.Count - 1;
+            Point3d lastPoint = AgentPolyline[lastIndex];
+            Vector3d lastVector = totalWeightedDirections[lastIndex] / totalWeights[lastIndex];
+            Point3d newPoint = lastPoint + lastVector;
+
+            AgentPolyline.Add(newPoint);
+        }
+
+
+        public int ClosestPoint(Point3d testPoint, List<int> pointIds)
+        {
             double closestDistance = 99999;
+            int closestId = 99999;
 
-            foreach (Point3d item in pointCloud){
-                double distance = (item - testPoint).Length;
+            for (int i = 0; i < pointIds.Count; i++)
+            {
 
-                if (distance < closestDistance) {
+                double distance = (AllPoints[pointIds[i]] - testPoint).Length;
+
+                if (distance < closestDistance)
+                {
                     closestDistance = distance;
-                    closestPoint = item;
+                    closestId = pointIds[i];
                 }
             }
-            return closestPoint;
+            return closestId;
         }
 
-
-        //have this return a tuple containing the tangent as well as the point
-        public List<Point3d> ClosestPoints(Point3d testPoint, List<Point3d> pointCloud, int n)
+        public List<int> ClosestIds(Point3d testPoint, List<int> pointIds, int n)
         {
-            List<Point3d> closePoints = new List<Point3d>();
-            for (int i = 0; i < n; i++) {
-                Point3d closestPoint = ClosestPoint(testPoint, pointCloud);
-                closePoints.Add(closestPoint);
-                pointCloud.Remove(closestPoint);
+            List<int> closeIds = new List<int>();
+
+            for (int i = 0; i < n; i++)
+            {
+                int closestId = ClosestPoint(testPoint, pointIds);
+                closeIds.Add(closestId);
+                pointIds.Remove(closestId);
             }
-            return closePoints;
+            return closeIds;
         }
 
         /*
-
          public List<Vec3D> ClosestPoints(Vec3D a, List<Vec3D> points, int n)
                 {
                     List<Vec3D> closePts = new List<Vec3D>();
@@ -206,11 +212,6 @@ namespace MeshGrowth
                     return closest;
                 }
         */
-
-
-
-
-
 
     }
 }

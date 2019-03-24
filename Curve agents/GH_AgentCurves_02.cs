@@ -45,6 +45,9 @@ namespace MeshGrowth
             List<Vector3d> allTangents = new List<Vector3d>();
 
             List<Point3d> iStartingPoints = new List<Point3d>();
+            //create a new random system
+
+            Random rand = new Random();
 
             bool iReset = false;
             bool iGrow = false;
@@ -74,7 +77,12 @@ namespace MeshGrowth
 
             if (iReset || agents == null) {
                 agents = new List<StigmergyAgent>();
-                for (int i = 0; i < iStartingPoints.Count; i++) { agents.Add(new StigmergyAgent(iStartingPoints[i])); }
+                for (int i = 0; i < iStartingPoints.Count; i++) {
+
+                    Vector3d randomVector = new Vector3d(rand.Next(-100, 100), rand.Next(-100, 100), 0);
+                    randomVector.Unitize();
+                    agents.Add(new StigmergyAgent(iStartingPoints[i], randomVector));
+                }
             }
 
             for (int i = 0; i < agents.Count; i++)
@@ -102,6 +110,7 @@ namespace MeshGrowth
 
             for (int i = 0; i < agents.Count; i++) {
                 agents[i].AllPoints = allPoints;
+                agents[i].AllTangents = allTangents;
                 agents[i].rTree = rTree;
 
                 agents[i].Grow = iGrow;
