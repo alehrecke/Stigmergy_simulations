@@ -32,7 +32,7 @@ namespace MeshGrowth
         {
             AgentPolyline = new Polyline();
             AgentPolyline.Add(_startingPoint);
-            AgentPolyline.Add(new Point3d(_startingPoint.X, _startingPoint.Y, 1));
+            AgentPolyline.Add(new Point3d(_startingPoint.X+1, _startingPoint.Y +1, 0));
         }
 
         public void Update()
@@ -40,7 +40,6 @@ namespace MeshGrowth
             SetWeights();
             CollisionDetection();
             EdgeLength();
-            VerticalForce();
             SiteExtents();
             UpdateVertices();
             AddPoint();
