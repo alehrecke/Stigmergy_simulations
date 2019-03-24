@@ -78,7 +78,6 @@ namespace MeshGrowth
             if (iReset || agents == null) {
                 agents = new List<StigmergyAgent>();
                 for (int i = 0; i < iStartingPoints.Count; i++) {
-
                     Vector3d randomVector = new Vector3d(rand.Next(-100, 100), rand.Next(-100, 100), 0);
                     randomVector.Unitize();
                     agents.Add(new StigmergyAgent(iStartingPoints[i], randomVector));
@@ -88,23 +87,23 @@ namespace MeshGrowth
             for (int i = 0; i < agents.Count; i++)
             {
                 Polyline thisPolyline = agents[i].AgentPolyline;
+                //remove output curves from here
                 outPutCurves.Add(thisPolyline.ToNurbsCurve());
 
-                //get all the point on all the curves
-                //get all the tangents at those points
+               //the velocity of the agent is its tangent vector.
                 for (int j = 0; j < thisPolyline.Count; j++) {
 
+                    //add agent positions to master list
                     Point3d thisPoint = thisPolyline[j];
                     allPoints.Add(thisPoint);
 
+                    //add agent velocity to master list
                     double t = thisPolyline.ClosestParameter(thisPoint);
                     Vector3d thisTangent = thisPolyline.TangentAt(t);
                     allTangents.Add(thisTangent);
                 }
-
-
-
             }
+
 
             for (int i = 0; i < allPoints.Count; i++) { rTree.Insert(allPoints[i], i); }
 
@@ -125,6 +124,8 @@ namespace MeshGrowth
                 agents[i].AlignMax = iAlignMax;
 
                 agents[i].Update();
+
+                //add each agent curves to the display list here.
             }
 
 
