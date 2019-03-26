@@ -5,207 +5,155 @@ using System.Text;
 using System.Threading.Tasks;
 using Rhino.Geometry;
 
-namespace MeshGrowth
+namespace CurveAgents
 {
     class StigmergyAgent
     {
         public bool Grow;
-        public List<Curve> Extents;
-        public double MaxVertexCount;
-        public double NeighbourCount;
+        public double XExtents;
+        public double YExtents;
+        public int MaxVertexCount;
+        public int NeighbourCount;
         public double RepelMin;
         public double RepelMax;
+        public double RepelWeight;
         public double AttractionMin;
         public double AttractionMax;
+        public double AttractionWeight;
         public double AlignMin;
         public double AlignMax;
+        public double AlignWeight;
+        public double SegmentLength;
         public List<Point3d> AllPoints;
         public List<Vector3d> AllTangents;
         public RTree rTree;
+        public List<Point3d> AgentList;
+        public List<Vector3d> AgentDirections;
+        public List<LineCurve> AgentSegments;
+        public List<double> TotalWeights;
+        /*
+        add in desired velocity vs current velocity.
+        add acceleration to velocity.
 
-        //change this to a list of points
-        public Polyline AgentPolyline;
-        //add a list of tangent vectors
+            acceleration = .....
+            velocity = velocity + accelaration;
+            set velocity total length
+            position = position + velocity;
+
+        */
 
 
-        public List<double> totalWeights;
-        public List<Vector3d> totalWeightedDirections;
 
-        //make it so that it works in torus space.
-        //make it so that each agent is composed of a list of points, and a list of corresponding vectors.
-        //display function makes a line from each point to the next
-
-        public StigmergyAgent(Point3d _startingPoint, Vector3d _randomVector)
-        {
-            Point3d secondPoint = _startingPoint + _randomVector;
-            //replace polyline with list of points
-            AgentPolyline = new Polyline();
-            AgentPolyline.Add(_startingPoint);
-            AgentPolyline.Add(secondPoint);
+        public StigmergyAgent(Point3d _startingPoint, Vector3d _randomvector){
+            AgentList = new List<Point3d>();
+            AgentDirections = new List<Vector3d>();
+            TotalWeights = new List<double>();
+            AgentList.Add(_startingPoint);
+            AgentDirections.Add(_randomvector);
+            AgentList.Add(_startingPoint + _randomvector);
+            AgentDirections.Add(new Vector3d());
+            TotalWeights.Add(0);
+            TotalWeights.Add(0);
         }
 
         public void Update(){
-            Weights();
-            Velocity();
-            //CollisionDetection();
-            //UpdateVertices();
+            CalculateVelocity();
             AddVertice();
+            TorusSpace();
+            DisplaySegments();
             RestrictLength();
         }
 
-        public void Weights()
+        private void CalculateVelocity()
         {
-            totalWeights = new List<double>();
-            totalWeightedDirections = new List<Vector3d>();
-
-            //replace with list of points
-            //change to only deal with the last point in the list
-            for (int i = 0; i < AgentPolyline.Count; i++)
-            {
-                totalWeights.Add(0);
-                totalWeightedDirections.Add(new Vector3d());
-            }
-        }
-
-        private void UpdateVertices()
-        {
-            for (int i = 0; i < AgentPolyline.Count; i++)
-            {
-                if (totalWeights[i] == 0) { continue; }
-                else
-                {
-                    Vector3d move = totalWeightedDirections[i] / totalWeights[i];
-                    AgentPolyline[i] += move;
-                }
-            }
-        }
-
-        private void CollisionDetection()
-        {
-            for (int i = 0; i < AgentPolyline.Count; i++)
-            {
-
-                Point3d thisPoint = AgentPolyline[i];
+                int lastIndex = AgentList.Count - 1;
+                Point3d thisPoint = AgentList[lastIndex];
                 List<int> neighbourIds = new List<int>();
 
-                rTree.Search(new Sphere(thisPoint, AttractionMax), (sender, args) => {
-                    if (AgentPolyline.Contains(AllPoints[args.Id]) == false) { neighbourIds.Add(args.Id); }
-                });
-
-
-
-                if (neighbourIds.Count > 0 && NeighbourCount > 1)
-                {
-                    List<int> orderedIds = ClosestIds(thisPoint, neighbourIds, (int)NeighbourCount);
-
-                    if (orderedIds.Count > 1){
-                        int value = orderedIds[0];
-                        int fullCount = AllPoints.Count;
-
-                        Point3d targetPoint = AllPoints[orderedIds[0]];
-                        Vector3d targetTangent = AllTangents[orderedIds[0]];
-                        Vector3d move = targetPoint - thisPoint;
-
-                        if (RepelMin <= move.Length && move.Length <= RepelMax)
-                        {
-                            move.Unitize();
-                            totalWeights[i] += 1;
-                            totalWeightedDirections[i] += move * -1;
-                        }
-
-                        if (AttractionMin < move.Length && move.Length <= AttractionMax)
-                        {
-                            move.Unitize();
-                            totalWeights[i] += 1;
-                            totalWeightedDirections[i] += move * 1;
-                        }
-
-                        if (AlignMin < move.Length && move.Length <= AlignMax)
-                        {
-                            targetTangent.Unitize();
-                            totalWeights[i] += 1;
-                            totalWeightedDirections[i] += targetTangent * 1;
-                        }
-                    }
-                }
-            }
-        }
-
-        private void Velocity()
-        {
-            //replace polyline with list of points.
-                int lastIndex = AgentPolyline.Count - 1;
-                Point3d thisPoint = AgentPolyline[lastIndex];
-                List<int> neighbourIds = new List<int>();
-
-                rTree.Search(new Sphere(thisPoint, AttractionMax), (sender, args) => {
-                    //replace polyline with list of points.
-                    if (AgentPolyline.Contains(AllPoints[args.Id]) == false) { neighbourIds.Add(args.Id);}
-
+                rTree.Search(new Sphere(thisPoint, AlignMax), (sender, args) => {
+                    if (AgentList.Contains(AllPoints[args.Id]) == false) { neighbourIds.Add(args.Id);}
                 });
 
                 if (neighbourIds.Count > 0 && NeighbourCount > 1){
 
-                    List<int> orderedIds = ClosestIds(thisPoint, neighbourIds, (int)NeighbourCount);
+                    List<int> orderedIds = ClosestIds(thisPoint, neighbourIds, NeighbourCount);
 
                     if (orderedIds.Count > 1)
                     {
-                        Point3d targetPoint = AllPoints[orderedIds[0]];
-                        Vector3d targetTangent = AllTangents[orderedIds[0]];
-                        Vector3d move = targetPoint - thisPoint;
+                    Point3d targetPoint = AllPoints[orderedIds[0]];
+                    Vector3d targetTangent = AverageTangent(orderedIds, NeighbourCount);
 
-                        if (RepelMin <= move.Length && move.Length <= RepelMax)
-                        {
+                    Vector3d move = targetPoint - thisPoint;
+                        
+                        if (RepelMin <= move.Length && move.Length <= RepelMax){
                             move.Unitize();
-                            totalWeights[lastIndex] += 1;
-                            totalWeightedDirections[lastIndex] += move * -1;
+                            TotalWeights[lastIndex] += RepelWeight;
+                            AgentDirections[lastIndex] += move * RepelWeight;
                         }
-
-                        if (AttractionMin < move.Length && move.Length <= AttractionMax)
-                        {
+                        
+                        if (AttractionMin < move.Length && move.Length <= AttractionMax){
                             move.Unitize();
-                            totalWeights[lastIndex] += 1;
-                            totalWeightedDirections[lastIndex] += move * 1;
+                            TotalWeights[lastIndex] += AttractionWeight;
+                            AgentDirections[lastIndex] += move * AttractionWeight;
                         }
-
-                        if (AlignMin < move.Length && move.Length <= AlignMax)
-                        {
+                        
+                        if (AlignMin < move.Length && move.Length <= AlignMax){
                             targetTangent.Unitize();
-                            totalWeights[lastIndex] += 1;
-                            totalWeightedDirections[lastIndex] += targetTangent * 1;
+                            TotalWeights[lastIndex] += AlignWeight;
+                            AgentDirections[lastIndex] += targetTangent * AlignWeight;
                         }
                     }
                 }
-        }
+            }
 
         private void AddVertice()
         {
             if (Grow) {
-                int lastIndex = AgentPolyline.Count - 1;
-                Point3d lastPoint = AgentPolyline[lastIndex];
-                Vector3d lastVector = totalWeightedDirections[lastIndex] / totalWeights[lastIndex];
+                int lastIndex = AgentList.Count - 1;
+                Point3d lastPoint = AgentList[lastIndex];
+
+
+                Vector3d lastVector = AgentDirections[lastIndex] / TotalWeights[lastIndex];
+
+
+
+                lastVector = lastVector * SegmentLength;
                 Point3d newPoint = lastPoint + lastVector;
-                AgentPolyline.Add(newPoint);
+                AgentList.Add(newPoint);
+                AgentDirections.Add(new Vector3d());
+                TotalWeights.Add(0);
             }
             }
 
+        private void DisplaySegments()
+        {
+            AgentSegments = new List<LineCurve>();
+
+            for (int i = 0; i < AgentList.Count - 1; i++){
+                double distance = (AgentList[i] - AgentList[i + 1]).Length;
+                if (distance >= XExtents*0.5 || distance >= YExtents) { continue; }
+                else { AgentSegments.Add(new LineCurve(AgentList[i], AgentList[i + 1])); }
+            }
+        }
+
         private void RestrictLength()
         {
-            if(MaxVertexCount < AgentPolyline.Count){
-                AgentPolyline.RemoveAt(0);
+            if(MaxVertexCount < AgentList.Count){
+                AgentList.RemoveAt(0);
+                AgentDirections.RemoveAt(0);
+                TotalWeights.RemoveAt(0);
             }
         }
 
         private void TorusSpace()
         {
-            //if the next position.x > x extents, next position.x == 0
-            //
-        }
+            int lastIndex = AgentList.Count - 1;
+            Point3d lastPoint = AgentList[lastIndex];
 
-        private void display()
-        {
-
-
+            if( lastPoint.X > XExtents ) { AgentList[lastIndex] = new Point3d( 0, lastPoint.Y, 0); }
+            if (lastPoint.X < 0) { AgentList[lastIndex] = new Point3d(XExtents, lastPoint.Y, 0); }
+            if (lastPoint.Y > YExtents) { AgentList[lastIndex] = new Point3d(lastPoint.X, 0, 0); }
+            if (lastPoint.Y < 0) { AgentList[lastIndex] = new Point3d(lastPoint.X, YExtents, 0); }
         }
 
         public int ClosestPoint(Point3d testPoint, List<int> pointIds)
@@ -240,6 +188,22 @@ namespace MeshGrowth
                 }
                 }
             return closeIds;
+        }
+
+        public Vector3d AverageTangent(List<int> orderedIds, int numberOfNeighbours){
+
+            Vector3d sum = new Vector3d();
+            Vector3d average = new Vector3d();
+            
+            if (numberOfNeighbours <= orderedIds.Count) {
+                for (int i = 0; i < numberOfNeighbours; i++) { sum += AllTangents[orderedIds[i]]; }
+                average = sum / numberOfNeighbours;
+            }
+            else{
+                for (int i = 0; i < orderedIds.Count; i++) { average += AllTangents[orderedIds[i]]; }
+                average = sum / orderedIds.Count;
+            }
+            return average;
         }
 
     }
