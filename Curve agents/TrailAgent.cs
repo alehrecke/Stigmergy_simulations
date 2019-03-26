@@ -54,7 +54,7 @@ namespace CurveAgents
             Point3d lastPoint = Trail[Trail.Count - 1].Position;
             NeighbourIds = new List<int>();
 
-            rtree.Search(new Sphere(lastPoint, 50), (sender, args) => { if (Trail.Contains(AllAgents[args.Id]) == false) { NeighbourIds.Add(args.Id); } });
+            rtree.Search(new Sphere(lastPoint, SearchRange), (sender, args) => { if (Trail.Contains(AllAgents[args.Id]) == false) { NeighbourIds.Add(args.Id); } });
 
             if (NeighbourIds.Count >= NeighbourCount) { NeighbourIds = ClosestIds(lastPoint, NeighbourIds, NeighbourCount); }
             else { NeighbourIds = ClosestIds(lastPoint, NeighbourIds, NeighbourIds.Count); }
