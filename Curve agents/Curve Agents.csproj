@@ -33,13 +33,16 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="GH_IO">
+    <Reference Include="GH_IO, Version=1.0.0.0, Culture=neutral, PublicKeyToken=6a29997d2e6b4f97, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Dependencies\GH_IO.dll</HintPath>
     </Reference>
-    <Reference Include="Grasshopper">
+    <Reference Include="Grasshopper, Version=1.0.0.20, Culture=neutral, PublicKeyToken=dda4f5ec2cd80803, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Dependencies\Grasshopper.dll</HintPath>
     </Reference>
-    <Reference Include="RhinoCommon">
+    <Reference Include="RhinoCommon, Version=5.1.30000.17, Culture=neutral, PublicKeyToken=552281e97c755530, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Dependencies\RhinoCommon.dll</HintPath>
     </Reference>
     <Reference Include="System" />
@@ -68,7 +71,7 @@
   </Target>
   -->
   <PropertyGroup>
-    <PostBuildEvent>Copy "$(TargetPath)" "C:\Users\HSP\AppData\Roaming\Grasshopper\Libraries\CurveAgents.gha"
+    <PostBuildEvent>Copy "$(TargetPath)" "C:\Users\alehr\AppData\Roaming\Grasshopper\Libraries\CurveAgents.gha"
 Erase "$(TargetPath)"</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
